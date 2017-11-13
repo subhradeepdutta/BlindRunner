@@ -73,15 +73,16 @@ class UIProgram(Ui_Dialog):
         
 		self.PiButton.clicked.connect(self.piButtonOperation)
 		self.VoiceCommandButton.clicked.connect(self.voiceCommandOperation)
+		self.ExitButton.clicked.connect(self.ExitOperation)
 		self.threadclass = ThreadClass()
 		self.threadclass.trigger.connect(self.updateImage)
 		self.threadclass.start()
         
 		awshost = "data.iot.us-west-2.amazonaws.com"
 		awsport = 8883
-		clientId = "UiPi"
-		thingName = "UiPi"
-		caPath = "VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem"
+		clientId = "VoicePi"
+		thingName = "VoicePi"
+		caPath = "aws-iot-rootCA.crt"
 		certPath = "cert.pem"
 		keyPath = "privkey.pem"
 
@@ -104,15 +105,15 @@ class UIProgram(Ui_Dialog):
 		print('In voiceCommandOperation')
 		# Record Audio
 		r = sr.Recognizer()
-		r.energy_threshold = 3700
+		r.energy_threshold = 2000
 		
 		# Speech recognition using Google Speech Recognition
 		try:
-			with sr.Microphone() as source:
+			with sr.Microphone(device_index=0) as source:
 				print("Adjusting ambient noise levels! Please wait")
 				r.adjust_for_ambient_noise(source, duration=1);
 				print("Speak now!")
-				audio = r.listen(source, timeout=1.5)
+				audio = r.listen(source, timeout=5)
 			# for testing purposes, we're just using the default API key
 			# to use another API key, use `r.recognize_google(audio, key="GOOGLE_SPEECH_RECOGNITION_API_KEY")`
 			# instead of `r.recognize_google(audio)`
@@ -141,19 +142,27 @@ class UIProgram(Ui_Dialog):
 			elif "stop" in speech_to_text_output:
 				command = "stop"
 			print("Identified the command as  ---->  " + command)
-			print("Transmitting to AWS Server")
+			Palette= QtGui.QPalette()
+			Palette.setColor(QtGui.QPalette.Text, QtCore.Qt.green)
+			self.CommandDisplay.setPalette(Palette)
+			self.CommandDisplay.setText(command)
+			self.mqttc.publish("temperature", command)
+			print("Transmitted successfully")
 
 		except NameError:
-			print("Did not recognize a valid command")
-			print("Terminating operation")
-		self.mqttc.publish("Navigation", command)
+                        print("Did not recognize a valid command")
+                        print("Terminating operation")
+                        Palette= QtGui.QPalette()
+                        Palette.setColor(QtGui.QPalette.Text, QtCore.Qt.red)
+                        self.CommandDisplay.setPalette(Palette)
+                        self.CommandDisplay.setText("ERROR")
         
         
 	def piButtonOperation(self):
 		print('In piButtonOperation')
-		
-    
-
+	def ExitOperation(self):
+                print('In ExitOperation')
+                sys.exit()
 
 		
 if __name__ == '__main__':

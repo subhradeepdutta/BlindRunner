@@ -18,19 +18,24 @@ class Ui_Dialog(object):
         self.VideoGraphicsView = QtWidgets.QGraphicsView(Dialog)
         self.VideoGraphicsView.setGeometry(QtCore.QRect(250, 40, 640, 480))
         self.VideoGraphicsView.setObjectName("VideoGraphicsView")
-		self.scene = QtWidgets.QGraphicsScene()
+        self.scene = QtWidgets.QGraphicsScene()
         self.PiButton = QtWidgets.QPushButton(Dialog)
         self.PiButton.setGeometry(QtCore.QRect(990, 680, 93, 28))
         self.PiButton.setObjectName("PiButton")
         self.CommandDisplay = QtWidgets.QLabel(Dialog)
-        self.CommandDisplay.setGeometry(QtCore.QRect(490, 670, 191, 51))
+        self.CommandDisplay.setGeometry(QtCore.QRect(490, 660, 191, 51))
         self.CommandDisplay.setAutoFillBackground(False)
         self.CommandDisplay.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.CommandDisplay.setLineWidth(10)
+        self.CommandDisplay.setLineWidth(30)
         self.CommandDisplay.setAlignment(QtCore.Qt.AlignCenter)
         self.CommandDisplay.setObjectName("CommandDisplay")
+        self.ExitButton = QtWidgets.QPushButton(Dialog)
+        self.ExitButton.setGeometry(QtCore.QRect(50, 690, 75, 23))
+        self.ExitButton.setObjectName("ExitButton")
 
         self.retranslateUi(Dialog)
+        #self.VoiceCommandButton.clicked.connect(self.CommandDisplay.clear)
+        #self.ExitButton.clicked.connect(self.PushButton.click)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
@@ -39,4 +44,5 @@ class Ui_Dialog(object):
         self.VoiceCommandButton.setText(_translate("Dialog", "Voice Command"))
         self.PiButton.setText(_translate("Dialog", "Voice Pi"))
         self.CommandDisplay.setText(_translate("Dialog", "<html><head/><body><p><br/></p></body></html>"))
+        self.ExitButton.setText(_translate("Dialog", "Exit"))
 
