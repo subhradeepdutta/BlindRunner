@@ -81,8 +81,8 @@ class UIProgram(Ui_Dialog):
         
         awshost = "data.iot.us-west-2.amazonaws.com"
         awsport = 8883
-        clientId = "VoicePi"
-        thingName = "VoicePi"
+        clientId = "Gesture-Pi"
+        thingName = "Gesture-Pi"
         caPath = "aws-iot-rootCA.crt"
         certPath = "cert.pem"
         keyPath = "privkey.pem"
@@ -126,7 +126,7 @@ class UIProgram(Ui_Dialog):
                 command = "Front"
                 
             self.CommandDisplay.setText(command)
-            self.mqttc.publish("temperature", command, qos=1)
+            self.mqttc.publish("Gesture-Pi/Commands", command)
             print("Transmitted successfully")
             
         
@@ -136,7 +136,7 @@ class UIProgram(Ui_Dialog):
             command = "Stop"
 
             self.CommandDisplay.setText(command)
-            self.mqttc.publish("temperature", command, qos=1)
+            self.mqttc.publish("Gesture-Pi/Command", command)
             print("Transmitted successfully")
   
             

@@ -41,8 +41,8 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.VoiceCommandButton.setText(_translate("Dialog", "Voice Command"))
-        self.PiButton.setText(_translate("Dialog", "Voice Pi"))
+        self.VoiceCommandButton.setText(_translate("Dialog", "Gesture Command"))
+        self.PiButton.setText(_translate("Dialog", "Gesture Pi"))
         self.CommandDisplay.setText(_translate("Dialog", "<html><head/><body><p><br/></p></body></html>"))
         self.ExitButton.setText(_translate("Dialog", "Exit"))
 
