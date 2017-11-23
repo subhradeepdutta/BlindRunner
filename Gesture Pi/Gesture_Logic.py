@@ -3,7 +3,7 @@ import skywriter
 import signal
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QThread
-from Voice import Ui_Dialog
+from Gesture import Ui_Dialog
 import socket
 import struct
 import time
@@ -114,29 +114,29 @@ class UIProgram(Ui_Dialog):
             print('Got a flick!', start, finish)
 
             if start == "east" and finish == "west":
-                command = "left"
+                command = "Left"
 
             if start == "west" and finish == "east":
-                command = "right"
+                command = "Right"
 
             if start == "north" and finish == "south":
-                command = "back"
+                command = "Back"
 
             if start == "south" and finish == "north":
-                command = "front"
+                command = "Front"
                 
             self.CommandDisplay.setText(command)
-            self.mqttc.publish("temperature", command)
+            self.mqttc.publish("temperature", command, qos=1)
             print("Transmitted successfully")
             
         
         @skywriter.touch()
         def touch(position):
             print('Touch!', position)
-            command = "stop"
+            command = "Stop"
 
             self.CommandDisplay.setText(command)
-            self.mqttc.publish("temperature", command)
+            self.mqttc.publish("temperature", command, qos=1)
             print("Transmitted successfully")
   
             
