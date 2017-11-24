@@ -31,10 +31,13 @@ class ThreadClass(QtCore.QThread):
         
         
     def run(self):
-        self.server_socket = socket.socket()
-        self.server_socket.bind(('0.0.0.0', 8006))
-        self.server_socket.listen(0)
-        self.connection = self.server_socket.accept()[0].makefile('rb')
+        # Connect a client socket to my_server:8000 (change my_server to the
+        # hostname of your server)
+        self.client_socket = socket.socket()
+        self.client_socket.connect(('192.168.141.153', 8006))
+
+        # Make a file-like object out of the connection
+        self.connection = self.client_socket.makefile('rb')
         while 1:
             
             # Accept a single connection and make a file-like object out of it
@@ -103,7 +106,7 @@ class UIProgram(Ui_Dialog):
        
         
     def voiceCommandOperation(self):
-        print('In voiceCommandOperation')
+        print('In Gesture Command Operation')
         command =None
         
         
