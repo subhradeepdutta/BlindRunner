@@ -25,8 +25,24 @@ exports.handler = (event, context, callback) => {
         qos: 1
         };
         
+        var params1 = {
+        topic: 'Lambda/Notify',
+        payload: sensorSide,
+        qos: 1
+        };
+        
      
         iotdata.publish(params, function(err, data){
+            if(err){
+                console.log(err);
+            }
+            else{
+                console.log("success?");
+                //context.succeed(event);
+            }
+        });
+        
+        iotdata.publish(params1, function(err, data){
             if(err){
                 console.log(err);
             }

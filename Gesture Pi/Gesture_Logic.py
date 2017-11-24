@@ -2,6 +2,7 @@ import sys
 import skywriter
 import signal
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 from PyQt5.QtCore import QThread
 from Gesture import Ui_Dialog
 import socket
@@ -15,6 +16,8 @@ import os
 import ssl
 from time import sleep
 from random import uniform
+##import easygui
+from pymsgbox import *
 
 
 connflag = False
@@ -34,7 +37,7 @@ class ThreadClass(QtCore.QThread):
         # Connect a client socket to my_server:8000 (change my_server to the
         # hostname of your server)
         self.client_socket = socket.socket()
-        self.client_socket.connect(('192.168.141.153', 8006))
+        self.client_socket.connect(('192.168.141.153', 8007))
 
         # Make a file-like object out of the connection
         self.connection = self.client_socket.makefile('rb')
@@ -59,24 +62,19 @@ class ThreadClass(QtCore.QThread):
             self.trigger.emit(pixmap)
             time.sleep(0.1)
             
-def on_connect(client, userdata, flags, rc):
-    global connflag
-    connflag = True
-    print("Connection returned result: " + str(rc) )
-    
-def on_message(client, userdata, msg):
-    print(msg.topic+" "+str(msg.payload))
+
+	
         
 
-class UIProgram(Ui_Dialog):
-        
+class UIProgram(Ui_Dialog):	
+           
     def __init__(self, dialog):
         Ui_Dialog.__init__(self)
         self.setupUi(dialog)
         
         
         self.PiButton.clicked.connect(self.piButtonOperation)
-        self.VoiceCommandButton.clicked.connect(self.voiceCommandOperation)
+        self.VoiceCommandButton.clicked.connect(self.gestureCommand)
         self.ExitButton.clicked.connect(self.ExitOperation)
         self.threadclass = ThreadClass()
         self.threadclass.trigger.connect(self.updateImage)
@@ -90,6 +88,23 @@ class UIProgram(Ui_Dialog):
         certPath = "cert.pem"
         keyPath = "privkey.pem"
 
+        
+        
+        def on_connect(client, userdata, flags, rc):
+            global connflag
+            connflag = True
+            print("Connection returned result: " + str(rc) )
+            client.subscribe("Lambda/Notify" , 1 )
+
+        def on_message(client, userdata, msg):
+            print(msg.topic+" "+str(msg.payload.decode("utf-8")))
+            Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
+            alert(text=Notification, title='Warning', button='OK')
+            #easygui.msgbox("Hi", title = "Bye")
+            #ret = QMessageBox.critical(None,"Warning",Notification)
+            #print(ret)
+            #time.sleep(0.5)
+
         self.mqttc = paho.Client()
         self.mqttc.on_connect = on_connect
         self.mqttc.on_message = on_message
@@ -97,15 +112,17 @@ class UIProgram(Ui_Dialog):
         self.mqttc.tls_set(caPath, certfile=certPath, keyfile=keyPath, cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
         self.mqttc.connect(awshost, awsport, keepalive=60)
         self.mqttc.loop_start()
+
         
     def updateImage(self,pixmap):
         self.scene.clear()
         self.scene.addPixmap(pixmap)
         self.scene.update()
         self.VideoGraphicsView.setScene(self.scene)
-       
         
-    def voiceCommandOperation(self):
+      
+        
+    def gestureCommand(self):
         print('In Gesture Command Operation')
         command =None
         
@@ -140,9 +157,7 @@ class UIProgram(Ui_Dialog):
 
             self.CommandDisplay.setText(command)
             self.mqttc.publish("Gesture-Pi/Command", command)
-            print("Transmitted successfully")
-  
-            
+            print("Transmitted successfully")        
         
      
     def piButtonOperation(self):
