@@ -14,8 +14,13 @@ import os
 import ssl
 from time import sleep
 from random import uniform
+from pymsgbox import *
 
 connflag = False
+# By default both the pi's are set in UI mode
+piMode = 1
+udp_sock = 0
+udp_server_address = 0
 
 
       
@@ -28,10 +33,13 @@ class ThreadClass(QtCore.QThread):
         
         
     def run(self):
-        self.server_socket = socket.socket()
-        self.server_socket.bind(('0.0.0.0', 8006))
-        self.server_socket.listen(0)
-        self.connection = self.server_socket.accept()[0].makefile('rb')
+        # Connect a client socket to my_server:8000 (change my_server to the
+        # hostname of your server)
+        self.client_socket = socket.socket()
+        self.client_socket.connect(('192.168.141.147', 8008))
+
+        # Make a file-like object out of the connection
+        self.connection = self.client_socket.makefile('rb')
         while 1:
             
             # Accept a single connection and make a file-like object out of it
@@ -53,13 +61,7 @@ class ThreadClass(QtCore.QThread):
             self.trigger.emit(pixmap)
             time.sleep(0.1)
             
-def on_connect(client, userdata, flags, rc):
-    global connflag
-    connflag = True
-    print("Connection returned result: " + str(rc) )
-    
-def on_message(client, userdata, msg):
-    print(msg.topic+" "+str(msg.payload))
+
         
 
 class UIProgram(Ui_Dialog):
@@ -71,12 +73,12 @@ class UIProgram(Ui_Dialog):
         self.LeftButton.pressed.connect(self.leftButtonOperation)
         self.RightButton.pressed.connect(self.rightButtonOperation)
         self.UpButton.pressed.connect(self.upButtonOperation)
-        self.PiButton.pressed.connect(self.piButtonOperation)
+        self.horizontalSlider.valueChanged[int].connect(self.piButtonOperation)
         self.DownButton.released.connect(self.releaseOperation)
         self.LeftButton.released.connect(self.releaseOperation)
         self.RightButton.released.connect(self.releaseOperation)
         self.UpButton.released.connect(self.releaseOperation)
-        self.PiButton.released.connect(self.releaseOperation)
+        
         self.threadclass = ThreadClass()
         self.threadclass.trigger.connect(self.updateImage)
         self.threadclass.start()
@@ -85,14 +87,32 @@ class UIProgram(Ui_Dialog):
         awsport = 8883
         clientId = "UiPi"
         thingName = "UiPi"
-        caPath = "VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem"
+        caPath = "aws-iot-rootCA.crt"
         certPath = "cert.pem"
         keyPath = "privkey.pem"
+
+        def on_connect(client, userdata, flags, rc):
+            global connflag
+            connflag = True
+            print("Connection returned result: " + str(rc) )
+            client.subscribe([("Lambda/Notify",1),("PiMode",1)])
+        def on_message(client, userdata, msg):
+            global piMode
+            print(msg.topic+" "+str(msg.payload.decode("utf-8")))
+            if(msg.topic == "Lambda/Notify") and (piMode == 1):
+                Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
+                alert(text=Notification, title='Warning', button='OK')
+            elif(msg.topic == "PiMode"):
+                if(str(msg.payload.decode("utf-8")) == "UI"):
+                    piMode = 1
+                    self.horizontalSlider.setValue(piMode)
+                elif(str(msg.payload.decode("utf-8")) == "Gesture"):
+                    piMode = 2
+                    self.horizontalSlider.setValue(piMode)
+                else:
+                    print("Invalid mode")
         
-        
-            
-        
-		
+      	
         self.mqttc = paho.Client()
         self.mqttc.on_connect = on_connect
         self.mqttc.on_message = on_message
@@ -115,33 +135,97 @@ class UIProgram(Ui_Dialog):
        
         
     def releaseOperation(self):
+        global piMode
         print('In releaseOperation')
-        self.mqttc.publish("temperature", "Stop")
+        if piMode == 1:
+            self.mqttc.publish("Gesture-Pi/Commands", "Stop",qos=1)
+        else:
+            #alert(text=Notification, title='Warning', button='OK')
+            print('Invalid')
+            
         
     def downButtonOperation(self):
+        global piMode
         print('In downButtonOperation')
-        self.mqttc.publish("temperature", "Back")
+        if piMode == 1:
+            self.mqttc.publish("Gesture-Pi/Commands", "Back",qos=1)
+        else:
+            #alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+            print('Invalid')
+            
         
     def leftButtonOperation(self):
+        global piMode
         print('In leftButtonOperation')
-        self.mqttc.publish("temperature", "Left")
+        if piMode == 1:
+            self.mqttc.publish("Gesture-Pi/Commands", "Left",qos=1)
+        else:
+            #alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+            print('Invalid')
         
     def rightButtonOperation(self):
+        global piMode
         print('In rightButtonOperation')
-        self.mqttc.publish("temperature", "Right")
+        if piMode == 1:
+            self.mqttc.publish("Gesture-Pi/Commands", "Right",qos=1)
+        else:
+            #alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+            print('Invalid')
         
     def upButtonOperation(self):
+        global piMode
         print('In upButtonOperation')
-        self.mqttc.publish("temperature", "Front")
+        if piMode == 1:
+            self.mqttc.publish("Gesture-Pi/Commands", "Front",qos=1)
+        else:
+            #alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+            print('Invalid')
         
-    def piButtonOperation(self):
+    def piButtonOperation(self, value):
+        global piMode
+        global udp_sock
+        global udp_server_address
+            
         print('In piButtonOperation')
-        
+        if value == 1:
+            print('In Ui Pi mode')
+            
+            message = "UI"
+            sent = udp_sock.sendto(message.encode('utf-8'), udp_server_address)
+            print("Message sent to server:" + message)
+            
+            piMode = value
+            
+            self.mqttc.publish("PiMode", "UI",qos=1)
+        elif value == 2:
+            print('In Gesture Pi mode')
+            
+            message = "Gesture"
+            sent = udp_sock.sendto(message.encode('utf-8'), udp_server_address)
+            print("Message sent to server:" + message)
+            
+            piMode = value
+    
+            self.mqttc.publish("PiMode", "Gesture",qos=1)
+        else:
+            print('Invalid slider value received')       
     
 
 
 		
 if __name__ == '__main__':
+
+    # Create a UDP socket
+    
+    udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    udp_server_address = ('192.168.141.147', 9200)
+    
+    message = "Hi"
+    sent = udp_sock.sendto(message.encode('utf-8'), udp_server_address)
+    print("Message sent to server:" + message)
+    
+    # Calling the GUI function
     app = QtWidgets.QApplication(sys.argv)
     dialog = QtWidgets.QDialog()
     prog = UIProgram(dialog)
