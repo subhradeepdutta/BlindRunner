@@ -22,6 +22,7 @@ from pymsgbox import *
 connflag = False
 some_value = 5000
 # By default both the pi's are set in UI mode
+dialogBoxSide = ""
 piMode = 1
 
 udp_sock = 0
@@ -102,9 +103,11 @@ class UIProgram(Ui_Dialog):
 
         def on_message(client, userdata, msg):
             global piMode
+            global dialogBoxSide
             print(msg.topic+" "+str(msg.payload.decode("utf-8")))
             if(msg.topic == "Lambda/Notify") and (piMode == 2):
                 Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
+                dialogBoxSide = str(msg.payload.decode("utf-8"))
                 alert(text=Notification, title='Warning', button='OK')
             elif(msg.topic == "PiMode"):
                 if(str(msg.payload.decode("utf-8")) == "UI"):
@@ -144,7 +147,8 @@ class UIProgram(Ui_Dialog):
         
         @skywriter.flick()
         def flick(start,finish):
-            global piMode  
+            global piMode
+            global dialogBoxSide
             print('Got a flick!', start, finish)
 
             if start == "east" and finish == "west":
@@ -163,10 +167,11 @@ class UIProgram(Ui_Dialog):
                 
             print("Pi is in %d" %piMode)
                 
-            if piMode == 2:
+            if (piMode == 2) and (dialogBoxSide != command):
                 self.CommandDisplay.setText(command)
                 self.mqttc.publish("Gesture-Pi/Commands", command, qos = 1)
                 print("Transmitted successfully")
+                dialogBoxSide = ""
             else:
                 print("Invalid PiMode")
             
