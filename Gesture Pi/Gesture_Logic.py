@@ -16,13 +16,13 @@ import os
 import ssl
 from time import sleep
 from random import uniform
-##import easygui
 from pymsgbox import *
 
 
 connflag = False
 some_value = 5000
-
+# By default both the pi's are set in UI mode
+piMode = 1
 
       
 
@@ -37,15 +37,17 @@ class ThreadClass(QtCore.QThread):
         # Connect a client socket to my_server:8000 (change my_server to the
         # hostname of your server)
         self.client_socket = socket.socket()
-        self.client_socket.connect(('192.168.141.153', 8007))
+        self.client_socket.connect(('192.168.141.147', 8009))
 
         # Make a file-like object out of the connection
         self.connection = self.client_socket.makefile('rb')
+        print("Connection established")
         while 1:
             
             # Accept a single connection and make a file-like object out of it
-            
+            #print("In while")
             self.image_len = struct.unpack('<L', self.connection.read(struct.calcsize('<L')))[0]
+            #print("self.image_len %d" %self.image_len)
             if not self.image_len:
                 break
             # Construct a stream to hold the image data and read the image
@@ -71,9 +73,8 @@ class UIProgram(Ui_Dialog):
     def __init__(self, dialog):
         Ui_Dialog.__init__(self)
         self.setupUi(dialog)
-        
-        
-        self.PiButton.clicked.connect(self.piButtonOperation)
+
+        self.horizontalSlider.valueChanged[int].connect(self.piButtonOperation)
         self.VoiceCommandButton.clicked.connect(self.gestureCommand)
         self.ExitButton.clicked.connect(self.ExitOperation)
         self.threadclass = ThreadClass()
@@ -94,16 +95,26 @@ class UIProgram(Ui_Dialog):
             global connflag
             connflag = True
             print("Connection returned result: " + str(rc) )
-            client.subscribe("Lambda/Notify" , 1 )
+            client.subscribe([("Lambda/Notify",1),("PiMode",1)])
 
         def on_message(client, userdata, msg):
             print(msg.topic+" "+str(msg.payload.decode("utf-8")))
-            Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
-            alert(text=Notification, title='Warning', button='OK')
-            #easygui.msgbox("Hi", title = "Bye")
-            #ret = QMessageBox.critical(None,"Warning",Notification)
-            #print(ret)
-            #time.sleep(0.5)
+            if(msg.topic == "Lambda/Notify") and (piMode == 2):
+                Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
+                alert(text=Notification, title='Warning', button='OK')
+            elif(msg.topic == "PiMode"):
+                #global piMode
+                if(str(msg.payload.decode("utf-8")) == "UI"):
+                    piMode = 1
+                    print("Published to change to UI mode")
+                    self.horizontalSlider.setValue(piMode)
+                elif(str(msg.payload.decode("utf-8")) == "Gesture"):
+                    piMode = 2
+                    print("Published to change to gesture mode")
+                    self.horizontalSlider.setValue(piMode)
+                else:
+                    print("Invalid mode")
+				
 
         self.mqttc = paho.Client()
         self.mqttc.on_connect = on_connect
@@ -115,6 +126,7 @@ class UIProgram(Ui_Dialog):
 
         
     def updateImage(self,pixmap):
+        print("Inside video stream function")
         self.scene.clear()
         self.scene.addPixmap(pixmap)
         self.scene.update()
@@ -145,9 +157,12 @@ class UIProgram(Ui_Dialog):
             if start == "south" and finish == "north":
                 command = "Front"
                 
-            self.CommandDisplay.setText(command)
-            self.mqttc.publish("Gesture-Pi/Commands", command)
-            print("Transmitted successfully")
+            if piMode == 2:
+                self.CommandDisplay.setText(command)
+                self.mqttc.publish("Gesture-Pi/Commands", command, qos = 1)
+                print("Transmitted successfully")
+            else:
+                print("Invalid PiMode")
             
         
         @skywriter.touch()
@@ -156,12 +171,30 @@ class UIProgram(Ui_Dialog):
             command = "Stop"
 
             self.CommandDisplay.setText(command)
-            self.mqttc.publish("Gesture-Pi/Command", command)
-            print("Transmitted successfully")        
+            global piMode
+            if piMode == 2:
+                self.mqttc.publish("Gesture-Pi/Commands", command,qos=1)
+                print("Transmitted successfully")
+            else:
+                alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+                    
         
      
-    def piButtonOperation(self):
-        print('In piButtonOperation')
+    def piButtonOperation(self, value):
+        print('In piButtonOperation where %d' %value)
+        if value == 1:
+            print('In Ui Pi mode')
+            piMode = value
+##            self.horizontalSlider.setValue(piMode)
+            self.mqttc.publish("PiMode", "UI",qos=1)
+        elif value == 2:
+            print('In Gesture Pi mode')
+            piMode = value
+##            self.horizontalSlider.setValue(piMode)
+            self.mqttc.publish("PiMode", "Gesture",qos=1)
+        else:
+            print('Invalid slider value received')
+			
     def ExitOperation(self):
                 print('In ExitOperation')
                 sys.exit()
