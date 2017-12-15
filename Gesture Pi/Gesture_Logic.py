@@ -27,7 +27,66 @@ piMode = 1
 
 udp_sock = 0
 udp_server_address = 0
+dialogBoxSide = ""
+ip_addr = '192.168.141.146'
 
+mqttc = None
+
+class ThreadClass1(QtCore.QThread):
+    
+    trigger = QtCore.pyqtSignal(['QString'])
+    def __init__(self,parent = None):
+        super(ThreadClass1,self).__init__(parent)
+        
+        
+    def run(self):
+        print("In ThreadClass1")
+        ########################### MQTT Connection##########################
+        awshost = "data.iot.us-west-2.amazonaws.com"
+        awsport = 8883
+        clientId = "UiPi"
+        thingName = "UiPi"
+        caPath = "aws-iot-rootCA.crt"
+        certPath = "cert.pem"
+        keyPath = "privkey.pem"
+
+        def on_connect(client, userdata, flags, rc):
+            global connflag
+            connflag = True
+            print("Connection returned result: " + str(rc) )
+            client.subscribe([("Lambda/Notify",1),("PiMode",1)])
+        def on_message(client, userdata, msg):
+            
+            print(msg.topic+" "+str(msg.payload.decode("utf-8")))
+            if(msg.topic == "Lambda/Notify") and (piMode == 2):
+                message = str(msg.payload.decode("utf-8"))
+                self.trigger.emit(message)
+                
+            elif(msg.topic == "PiMode"):
+                if(str(msg.payload.decode("utf-8")) == "UI"):
+                    self.trigger.emit('UI')
+                    
+                elif(str(msg.payload.decode("utf-8")) == "Gesture"):
+                    self.trigger.emit('Gesture')
+                    
+                else:
+                    print("Invalid mode")
+                    
+                    
+
+        global mqttc
+        mqttc = paho.Client()
+        mqttc.on_connect = on_connect
+        mqttc.on_message = on_message
+
+
+
+        mqttc.tls_set(caPath, certfile=certPath, keyfile=keyPath, cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
+
+        mqttc.connect(awshost, awsport, keepalive=60)
+
+        mqttc.loop_start()
+        #####################################################################
       
 
 class ThreadClass(QtCore.QThread):
@@ -38,10 +97,12 @@ class ThreadClass(QtCore.QThread):
         
         
     def run(self):
+        print("In ThreadClass")
+        global ip_addr
         # Connect a client socket to my_server:8000 (change my_server to the
         # hostname of your server)
         self.client_socket = socket.socket()
-        self.client_socket.connect(('192.168.141.147', 8009))
+        self.client_socket.connect((ip_addr, 8009))
 
         # Make a file-like object out of the connection
         self.connection = self.client_socket.makefile('rb')
@@ -72,63 +133,60 @@ class ThreadClass(QtCore.QThread):
 	
         
 
-class UIProgram(Ui_Dialog):	
-           
+class UIProgram(Ui_Dialog):
+    
+    def showWarningBox(self,arg):
+        
+        global piMode
+        global dialogBoxSide
+        print("showWarningBox with piMode:%d" %piMode)
+        if(arg == 'UI'):
+            piMode = 1
+            self.horizontalSlider.setValue(piMode)
+            
+        elif(arg == 'Gesture'):
+            piMode = 2
+            self.horizontalSlider.setValue(piMode)
+            
+        else:
+            if(piMode == 2):
+                
+                Notification = "Possible collision on " + arg+ " side"
+                dialogBoxSide = arg
+                self.msgBox.setIcon(QtWidgets.QMessageBox.Warning)
+                self.msgBox.setWindowTitle("Warning")
+                self.msgBox.setText(Notification)
+                self.msgBox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                self.msgBox.show()
+        
     def __init__(self, dialog):
         Ui_Dialog.__init__(self)
         self.setupUi(dialog)
 
         self.horizontalSlider.valueChanged[int].connect(self.piButtonOperation)
-        self.VoiceCommandButton.clicked.connect(self.gestureCommand)
-        self.ExitButton.clicked.connect(self.ExitOperation)
+        self.GestureCommandButton.clicked.connect(self.gestureCommand)
+        self.SignOutButton.clicked.connect(self.ExitOperation)
+        self.msgBox = QtWidgets.QMessageBox()
+        
+        # Create a UDP socket
+        global udp_sock
+        global udp_server_address
+        global ip_addr
+        
+        udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        udp_server_address = (ip_addr, 9200)
+        
+        message = "UI"
+        sent = udp_sock.sendto(message.encode('utf-8'), udp_server_address)
+        print("Message sent to server:" + message)
         self.threadclass = ThreadClass()
         self.threadclass.trigger.connect(self.updateImage)
         self.threadclass.start()
         
-        awshost = "data.iot.us-west-2.amazonaws.com"
-        awsport = 8883
-        clientId = "Gesture-Pi"
-        thingName = "Gesture-Pi"
-        caPath = "aws-iot-rootCA.crt"
-        certPath = "cert.pem"
-        keyPath = "privkey.pem"
-
-        
-        
-        def on_connect(client, userdata, flags, rc):
-            global connflag
-            connflag = True
-            print("Connection returned result: " + str(rc) )
-            client.subscribe([("Lambda/Notify",1),("PiMode",1)])
-
-        def on_message(client, userdata, msg):
-            global piMode
-            global dialogBoxSide
-            print(msg.topic+" "+str(msg.payload.decode("utf-8")))
-            if(msg.topic == "Lambda/Notify") and (piMode == 2):
-                Notification = "Possible collision on " + str(msg.payload.decode("utf-8")) + " side"
-                dialogBoxSide = str(msg.payload.decode("utf-8"))
-                alert(text=Notification, title='Warning', button='OK')
-            elif(msg.topic == "PiMode"):
-                if(str(msg.payload.decode("utf-8")) == "UI"):
-                    piMode = 1
-                    print("Changed piMode variable to UI mode")
-                    self.horizontalSlider.setValue(piMode)
-                elif(str(msg.payload.decode("utf-8")) == "Gesture"):
-                    piMode = 2
-                    print("Changed piMode variable to Gesture mode")
-                    self.horizontalSlider.setValue(piMode)
-                else:
-                    print("Invalid mode")
-				
-
-        self.mqttc = paho.Client()
-        self.mqttc.on_connect = on_connect
-        self.mqttc.on_message = on_message
-
-        self.mqttc.tls_set(caPath, certfile=certPath, keyfile=keyPath, cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
-        self.mqttc.connect(awshost, awsport, keepalive=60)
-        self.mqttc.loop_start()
+        self.threadclass1 = ThreadClass1()
+        self.threadclass1.trigger.connect(self.showWarningBox)
+        self.threadclass1.start()
 
         
     def updateImage(self,pixmap):
@@ -149,6 +207,7 @@ class UIProgram(Ui_Dialog):
         def flick(start,finish):
             global piMode
             global dialogBoxSide
+            global mqttc
             print('Got a flick!', start, finish)
 
             if start == "east" and finish == "west":
@@ -168,8 +227,8 @@ class UIProgram(Ui_Dialog):
             print("Pi is in %d" %piMode)
                 
             if (piMode == 2) and (dialogBoxSide != command):
-                self.CommandDisplay.setText(command)
-                self.mqttc.publish("Gesture-Pi/Commands", command, qos = 1)
+                # self.CommandDisplay.setText(command)
+                mqttc.publish("Gesture-Pi/Commands", command, qos = 1)
                 print("Transmitted successfully")
                 dialogBoxSide = ""
             else:
@@ -179,21 +238,31 @@ class UIProgram(Ui_Dialog):
         @skywriter.touch()
         def touch(position):
             global piMode
+            global mqttc
             print('Touch!', position)
             command = "Stop"
 
-            self.CommandDisplay.setText(command)
+            # self.CommandDisplay.setText(command)
             if piMode == 2:
-                self.mqttc.publish("Gesture-Pi/Commands", command,qos=1)
+                mqttc.publish("Gesture-Pi/Commands", command,qos=1)
                 print("Transmitted successfully")
             else:
-                alert(text="Pi is in Invalid mode", title='Warning', button='OK')
+                text="Pi is in Invalid mode"
+                self.msgBox.setIcon(QtWidgets.QMessageBox.Warning)
+                self.msgBox.setWindowTitle("Warning")
+                self.msgBox.setText(text)
+                self.msgBox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                self.msgBox.show()
                     
         
      
     def piButtonOperation(self, value):
         global piMode
-        print('In piButtonOperation where %d' %value)
+        global udp_sock
+        global udp_server_address
+        global mqttc
+            
+        print('In piButtonOperation')
         if value == 1:
             print('In Ui Pi mode')
             
@@ -202,7 +271,8 @@ class UIProgram(Ui_Dialog):
             print("Message sent to server:" + message)
             
             piMode = value
-            self.mqttc.publish("PiMode", "UI",qos=1)
+            
+            mqttc.publish("PiMode", "UI",qos=1)
         elif value == 2:
             print('In Gesture Pi mode')
             
@@ -211,7 +281,8 @@ class UIProgram(Ui_Dialog):
             print("Message sent to server:" + message)
             
             piMode = value
-            self.mqttc.publish("PiMode", "Gesture",qos=1)
+    
+            mqttc.publish("PiMode", "Gesture",qos=1)
         else:
             print('Invalid slider value received')
 			
@@ -221,16 +292,10 @@ class UIProgram(Ui_Dialog):
 
         
 if __name__ == '__main__':
-     # Create a UDP socket
-    
-    udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    udp_server_address = ('192.168.141.147', 9200)
     
-    message = "Hi"
-    sent = udp_sock.sendto(message.encode('utf-8'), udp_server_address)
-    print("Message sent to server:" + message)
     
+    # Calling the GUI function
     app = QtWidgets.QApplication(sys.argv)
     dialog = QtWidgets.QDialog()
     prog = UIProgram(dialog)

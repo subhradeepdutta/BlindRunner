@@ -6,7 +6,7 @@ var iotdata = new AWS.IotData({endpoint: 'a2wvihqic469dv.iot.us-west-2.amazonaws
 
 console.log('Loading function');
 
-var globalThreashold = 50;
+var globalThreashold = 70;
 
 exports.handler = (event, context, callback) => {
     //console.log('Received event:', JSON.stringify(event, null, 2));
@@ -38,7 +38,7 @@ exports.handler = (event, context, callback) => {
             }
             else{
                 console.log("success?");
-                //context.succeed(event);
+                
             }
         });
         
@@ -48,13 +48,13 @@ exports.handler = (event, context, callback) => {
             }
             else{
                 console.log("success?");
-                //context.succeed(event);
+               
             }
         });
         
     }
    callback(null, "Done Processing");  // Echo back the first key value
-    //callback('Something went wrong');
+    
     
     
 };

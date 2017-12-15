@@ -1,0 +1,71 @@
+console.log('Loading event');
+var AWS = require('aws-sdk');
+var dynamodb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
+
+var AWS1 = require('aws-sdk');
+AWS1.config.update({region: 'us-west-2'});
+var iotdata = new AWS1.IotData({endpoint: 'a2wvihqic469dv.iot.us-west-2.amazonaws.com'});
+
+exports.handler = function(event, context) {
+    console.log('Received username  :', event.username);
+    console.log('Received password :', event.password);
+    
+    var tableName = "LoginDetailsTable";
+    var login_flag = 0;
+    dynamodb.scan({
+        TableName : tableName,
+        Limit : 100
+    }, function(err, data) {
+        if (err) {
+            context.done('error','reading dynamodb failed: '+err);
+        }
+        for (var i in data.Items) {
+            i = data.Items[i];
+            console.log(i.username.S + ': '+ i.password.S);
+            if((event.username == i.username.S) && (event.password == i.password.S))
+            {
+                login_flag = 1;
+                break;
+            }
+            context.done(null, "Ciao!");
+        }
+        if(login_flag == 1)
+        {
+            console.log('Authentication is successfull');
+                var params = {
+                topic: 'LoginCheckResult',
+                payload: 'LoginSuccessful',
+                qos: 1
+                };
+                
+             
+                iotdata.publish(params, function(err, data){
+                    if(err){
+                        console.log(err);
+                    }
+                    else{
+                        console.log("success");
+                    }
+                });
+        }
+        else
+        {
+          console.log('Authentication is Unsuccessfull');
+                var params1 = {
+                topic: 'LoginCheckResult',
+                payload: 'LoginUnsuccessful',
+                qos: 1
+                };
+                
+             
+                iotdata.publish(params1, function(err, data){
+                    if(err){
+                        console.log(err);
+                    }
+                    else{
+                        console.log("success");
+                    }
+                });  
+        }
+    });
+};
