@@ -2,7 +2,7 @@
 
 This file presents the logic of controlling car pi using AWS MQTT commands.
 
-It also show's if car pi is in UI mode or Gesture mode.
+It also shows if Car Pi is in UI mode or Gesture mode.
 
 """
 

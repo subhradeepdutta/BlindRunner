@@ -2,6 +2,6 @@
 Project Repository for Embedded Interface Design Super Project Blind Runner
 
 Team members:
-Sridhar Pavithrapu
-Subhradeep Dutta
-Sharat Rattehalli Puttaraju
+1. Sridhar Pavithrapu
+1. Subhradeep Dutta
+1. Sharat Rattehalli Puttaraju
