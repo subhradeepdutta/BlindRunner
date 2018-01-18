@@ -7,4 +7,6 @@ Team members:
 1. Sharat Rattehalli Puttaraju
 
 
-![Blind Runner](https://drive.google.com/file/d/1BrE_2ijYhUNC4vbiFZAShk0hFT7gSZ0O/view)
+![Blind Runner Front View](https://github.com/subhradeepdutta/BlindRunner/blob/master/BlindRunner_Front.jpg)
+
+![Blind Runner Side View](https://github.com/subhradeepdutta/BlindRunner/blob/master/BlindRunner_Side.jpg)
