@@ -7,4 +7,4 @@ Team members:
 1. Sharat Rattehalli Puttaraju
 
 
-![Blind Runner](https://drive.google.com/file/d/1BrE_2ijYhUNC4vbiFZAShk0hFT7gSZ0O/view?usp=sharing)
+![Blind Runner](https://drive.google.com/file/d/1BrE_2ijYhUNC4vbiFZAShk0hFT7gSZ0O/view)
